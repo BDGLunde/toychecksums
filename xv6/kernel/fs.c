@@ -416,6 +416,7 @@ readi(struct inode *ip, char *dst, uint off, uint n)
     return devsw[ip->major].read(ip, dst, n);
   }
 
+  //iupdate(ip);
   if(off > ip->size || off + n < off)
     return -1;
   if(off + n > ip->size)
@@ -435,12 +436,12 @@ readi(struct inode *ip, char *dst, uint off, uint n)
     {
 	    if (blockNum < NDIRECT)
 	    {
-		    if (adler != ip->checksums[blockNum])
-		    {
+		    //if (adler != ip->checksums[blockNum])
+		    //{
 			    //brelse(bp);
 			    cprintf("Error: checksum mismatch, block %d checksum: %d, adler: %d\n", sector_number, ip->checksums[blockNum], adler);
 			    //return -1;
-		    }
+		    //}
 	    }
     }
 
@@ -487,8 +488,8 @@ writei(struct inode *ip, char *src, uint off, uint n)
 	    ip->checksums[blockNum] = adler;
     }
 
+	    iupdate(ip);
     bwrite(bp);
-    iupdate(ip);
     brelse(bp);
   }
 

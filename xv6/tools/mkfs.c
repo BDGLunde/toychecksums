@@ -345,10 +345,11 @@ iappend(uint inum, void *xp, int n)
     if(fbn < NDIRECT){
       if(xint(din.addrs[fbn]) == 0){
         din.addrs[fbn] = xint(freeblock++);
+	rsect(xint(din.addrs[fbn]), buf2);
+	din.checksums[fbn] = adler32(buf2, 512);
         usedblocks++;
       }
-      rsect(xint(din.addrs[fbn]), buf2);
-      din.checksums[fbn] = adler32(buf2, 512);
+
       x = xint(din.addrs[fbn]);
     } else {
       if(xint(din.indirect) == 0){
