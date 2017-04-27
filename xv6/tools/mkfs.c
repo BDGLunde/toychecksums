@@ -369,6 +369,10 @@ iappend(uint inum, void *xp, int n)
     n1 = min(n, (fbn + 1) * 512 - off);
     rsect(x, buf);
     bcopy(p, buf + off - (fbn * 512), n1);
+    if (fbn < NDIRECT) 
+    {
+    	din.checksums[fbn] = adler32(buf, 512);
+    }
     wsect(x, buf);
     n -= n1;
     off += n1;

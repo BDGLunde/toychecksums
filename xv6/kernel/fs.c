@@ -488,7 +488,7 @@ writei(struct inode *ip, char *src, uint off, uint n)
 	    ip->checksums[blockNum] = adler;
     }
 
-	    iupdate(ip);
+//	    iupdate(ip);
     bwrite(bp);
     brelse(bp);
   }
@@ -514,7 +514,7 @@ namecmp(const char *s, const char *t)
 struct inode*
 dirlookup(struct inode *dp, char *name, uint *poff)
 {
-  uint off, inum;
+  uint off, inum, blockNum;// adler;
   struct buf *bp;
   struct dirent *de;
 
@@ -522,7 +522,8 @@ dirlookup(struct inode *dp, char *name, uint *poff)
     panic("dirlookup not DIR");
 
   for(off = 0; off < dp->size; off += BSIZE){
-    bp = bread(dp->dev, bmap(dp, off / BSIZE));
+    blockNum = off/BSIZE;
+    bp = bread(dp->dev, bmap(dp, blockNum));
     for(de = (struct dirent*)bp->data;
         de < (struct dirent*)(bp->data + BSIZE);
         de++){
