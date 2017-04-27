@@ -10,6 +10,7 @@
 
 #define ROOTINO 1  // root i-number
 #define BSIZE 512  // block size
+#define ADLER32_BASE 65521U
 
 // File system super block
 struct superblock {
@@ -18,8 +19,8 @@ struct superblock {
   uint ninodes;      // Number of inodes.
 };
 
-#define NDIRECT 12
-#define NINDIRECT (BSIZE / sizeof(uint))
+#define NDIRECT 6
+#define NINDIRECT (BSIZE / (2 * sizeof(uint)))
 #define MAXFILE (NDIRECT + NINDIRECT)
 
 // On-disk inode structure
@@ -29,7 +30,9 @@ struct dinode {
   short minor;          // Minor device number (T_DEV only)
   short nlink;          // Number of links to inode in file system
   uint size;            // Size of file (bytes)
-  uint addrs[NDIRECT+1];   // Data block addresses
+  uint addrs[NDIRECT];   // Data block addresses
+  uint checksums[NDIRECT];
+  uint indirect;
 };
 
 // Inodes per block.
@@ -51,5 +54,18 @@ struct dirent {
   ushort inum;
   char name[DIRSIZ];
 };
+
+static inline uint adler32(void* data, uint len)
+{
+	uint i, a = 1, b = 0;
+
+	for (i = 0; i < len; i++) {
+		a = (a + ((uchar*)data)[i]) % ADLER32_BASE;
+		b = (b + a) % ADLER32_BASE;
+	}
+
+	return (b << 16) | a;
+
+}
 
 #endif // _FS_H_
