@@ -407,7 +407,7 @@ stati(struct inode *ip, struct stat *st)
 int
 readi(struct inode *ip, char *dst, uint off, uint n)
 {
-  uint tot, m;
+  uint tot, m, blockNum, adler;
   struct buf *bp;
 
   if(ip->type == T_DEV){
@@ -422,12 +422,28 @@ readi(struct inode *ip, char *dst, uint off, uint n)
     n = ip->size - off;
 
   for(tot=0; tot<n; tot+=m, off+=m, dst+=m){
-    uint sector_number = bmap(ip, off/BSIZE);
+    blockNum = off/BSIZE;
+    uint sector_number = bmap(ip, blockNum);
     if(sector_number == 0){ //failed to find block
       panic("readi: trying to read a block that was never allocated");
     }
     
     bp = bread(ip->dev, sector_number);
+    adler = adler32(bp->data, 512);
+
+    if (sector_number != 29)
+    {
+	    if (blockNum < NDIRECT)
+	    {
+		    if (adler != ip->checksums[blockNum])
+		    {
+			    //brelse(bp);
+			    cprintf("Error: checksum mismatch, block %d checksum: %d, adler: %d\n", sector_number, ip->checksums[blockNum], adler);
+			    //return -1;
+		    }
+	    }
+    }
+
     m = min(n - tot, BSIZE - off%BSIZE);
     memmove(dst, bp->data + off%BSIZE, m);
     brelse(bp);
@@ -439,7 +455,7 @@ readi(struct inode *ip, char *dst, uint off, uint n)
 int
 writei(struct inode *ip, char *src, uint off, uint n)
 {
-  uint tot, m;
+  uint tot, m, blockNum, adler;
   struct buf *bp;
 
   if(ip->type == T_DEV){
@@ -454,7 +470,8 @@ writei(struct inode *ip, char *src, uint off, uint n)
     n = MAXFILE*BSIZE - off;
 
   for(tot=0; tot<n; tot+=m, off+=m, src+=m){
-    uint sector_number = bmap(ip, off/BSIZE);
+    blockNum = off/BSIZE;
+    uint sector_number = bmap(ip, blockNum);
     if(sector_number == 0){ //failed to find block
       n = tot; //return number of bytes written so far
       break;
@@ -463,7 +480,15 @@ writei(struct inode *ip, char *src, uint off, uint n)
     bp = bread(ip->dev, sector_number);
     m = min(n - tot, BSIZE - off%BSIZE);
     memmove(bp->data + off%BSIZE, src, m);
+    
+    adler = adler32(bp->data, 512);
+    if (blockNum < NDIRECT)
+    {
+	    ip->checksums[blockNum] = adler;
+    }
+
     bwrite(bp);
+    iupdate(ip);
     brelse(bp);
   }
 

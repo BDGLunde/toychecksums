@@ -332,6 +332,7 @@ iappend(uint inum, void *xp, int n)
   uint fbn, off, n1;
   struct dinode din;
   char buf[512];
+  char buf2[512];
   uint indirect[NINDIRECT];
   uint x;
 
@@ -346,6 +347,8 @@ iappend(uint inum, void *xp, int n)
         din.addrs[fbn] = xint(freeblock++);
         usedblocks++;
       }
+      rsect(xint(din.addrs[fbn]), buf2);
+      din.checksums[fbn] = adler32(buf2, 512);
       x = xint(din.addrs[fbn]);
     } else {
       if(xint(din.indirect) == 0){
