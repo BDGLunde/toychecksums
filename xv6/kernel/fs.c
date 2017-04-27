@@ -508,14 +508,15 @@ writei(struct inode *ip, char *src, uint off, uint n)
         brelse(bp2);
     }
 
-//	    iupdate(ip);
+	    //iupdate(ip);
     bwrite(bp);
     brelse(bp);
   }
 
+  iupdate(ip);
+
   if(n > 0 && off > ip->size){
     ip->size = off;
-    iupdate(ip);
   }
   return n;
 }
