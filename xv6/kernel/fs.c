@@ -431,20 +431,32 @@ readi(struct inode *ip, char *dst, uint off, uint n)
     
     bp = bread(ip->dev, sector_number);
     adler = adler32(bp->data, 512);
-
-    if (sector_number != 29)
+//if(sector_number != 29) {
+    if (blockNum < NDIRECT)
     {
-	    if (blockNum < NDIRECT)
-	    {
-		    //if (adler != ip->checksums[blockNum])
-		    //{
-			    //brelse(bp);
-			    cprintf("Error: checksum mismatch, block %d checksum: %d, adler: %d\n", sector_number, ip->checksums[blockNum], adler);
-			    //return -1;
-		    //}
-	    }
+	if (adler != ip->checksums[blockNum])
+	{
+		brelse(bp);
+		cprintf("Error: checksum mismatch, block %d checksum: %d, adler: %d\n", sector_number, ip->checksums[blockNum], adler);
+		return -1;
+	}
     }
-
+    else
+    {
+	struct buf *bp2;
+	bp2 = bread(ip->dev, ip->indirect);
+	uint checksum;
+	memmove(&checksum, &bp2->data[sizeof(uint) * (NINDIRECT + blockNum - NDIRECT)], sizeof(uint));
+	if (adler != checksum)
+	{
+		brelse(bp);
+		brelse(bp2);
+                cprintf("Error: checksum mismatch in indirect block, block %d checksum: %d, adler: %d\n", sector_number, ip->checksums[blockNum], adler); 
+                return -1;
+	}
+	brelse(bp2);
+    }
+//}
     m = min(n - tot, BSIZE - off%BSIZE);
     memmove(dst, bp->data + off%BSIZE, m);
     brelse(bp);
@@ -486,6 +498,14 @@ writei(struct inode *ip, char *src, uint off, uint n)
     if (blockNum < NDIRECT)
     {
 	    ip->checksums[blockNum] = adler;
+    }
+    else
+    {
+        struct buf *bp2;
+        bp2 = bread(ip->dev, ip->indirect);
+        memmove(&bp2->data[sizeof(uint) * (NINDIRECT + blockNum - NDIRECT)], &adler, sizeof(uint));
+	bwrite(bp2);
+        brelse(bp2);
     }
 
 //	    iupdate(ip);
@@ -534,7 +554,36 @@ dirlookup(struct inode *dp, char *name, uint *poff)
         if(poff)
           *poff = off + (uchar*)de - bp->data;
         inum = de->inum;
-        brelse(bp);
+
+    	uint adler = adler32(bp->data, 512);
+	uint sector_number = bmap(dp, blockNum);
+//if (sector_number !=29) {
+	if (blockNum < NDIRECT)
+    	{
+        	if (adler != dp->checksums[blockNum])
+        	{
+                	brelse(bp);
+                	cprintf("Error: checksum mismatch, block %d checksum: %d, adler: %d\n", sector_number, dp->checksums[blockNum], adler);
+                	return 0;
+        	}
+    	}
+    	else
+    	{
+        	struct buf *bp2;
+        	bp2 = bread(dp->dev, dp->indirect);
+        	uint checksum;
+        	memmove(&checksum, &bp2->data[sizeof(uint) * (NINDIRECT + blockNum - NDIRECT)], sizeof(uint));
+        	if (adler != checksum)
+        	{
+                	brelse(bp);
+                	brelse(bp2);
+                	cprintf("Error: checksum mismatch in indirect block, block %d checksum: %d, adler: %d\n", sector_number, dp->checksums[blockNum], adler);
+                	return 0;
+        	}
+        brelse(bp2);
+    	}
+//}
+	brelse(bp);
         return iget(dp->dev, inum);
       }
     }

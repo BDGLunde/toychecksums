@@ -373,6 +373,15 @@ iappend(uint inum, void *xp, int n)
     {
     	din.checksums[fbn] = adler32(buf, 512);
     }
+    else
+    {
+	char buf3[512];
+	rsect(xint(din.indirect), buf3);
+	uint checksum = adler32(buf, 512);
+        memmove(&buf3[sizeof(uint) * (NINDIRECT + fbn - NDIRECT)], &checksum, sizeof(uint));
+        wsect(xint(din.indirect), buf3);
+    }
+
     wsect(x, buf);
     n -= n1;
     off += n1;
