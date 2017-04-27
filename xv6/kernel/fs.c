@@ -191,6 +191,8 @@ iupdate(struct inode *ip)
   dip->nlink = ip->nlink;
   dip->size = ip->size;
   memmove(dip->addrs, ip->addrs, sizeof(ip->addrs));
+  memmove(dip->checksums, ip->checksums, sizeof(ip->checksums));
+  dip->indirect = ip->indirect;
   bwrite(bp);
   brelse(bp);
 }
@@ -266,6 +268,8 @@ ilock(struct inode *ip)
     ip->nlink = dip->nlink;
     ip->size = dip->size;
     memmove(ip->addrs, dip->addrs, sizeof(ip->addrs));
+    memmove(ip->checksums, dip->checksums, sizeof(ip->checksums));
+    ip->indirect = dip->indirect;
     brelse(bp);
     ip->flags |= I_VALID;
     if(ip->type == 0)
@@ -340,8 +344,8 @@ bmap(struct inode *ip, uint bn)
 
   if(bn < NINDIRECT){
     // Load indirect block, allocating if necessary.
-    if((addr = ip->addrs[NDIRECT]) == 0)
-      ip->addrs[NDIRECT] = addr = balloc(ip->dev);
+    if((addr = ip->indirect) == 0)
+      ip->indirect = addr = balloc(ip->dev);
     bp = bread(ip->dev, addr);
     a = (uint*)bp->data;
     if((addr = a[bn]) == 0){
@@ -372,16 +376,16 @@ itrunc(struct inode *ip)
     }
   }
   
-  if(ip->addrs[NDIRECT]){
-    bp = bread(ip->dev, ip->addrs[NDIRECT]);
+  if(ip->indirect){
+    bp = bread(ip->dev, ip->indirect);
     a = (uint*)bp->data;
     for(j = 0; j < NINDIRECT; j++){
       if(a[j])
         bfree(ip->dev, a[j]);
     }
     brelse(bp);
-    bfree(ip->dev, ip->addrs[NDIRECT]);
-    ip->addrs[NDIRECT] = 0;
+    bfree(ip->dev, ip->indirect);
+    ip->addrs[indirect] = 0;
   }
 
   ip->size = 0;
