@@ -431,7 +431,7 @@ readi(struct inode *ip, char *dst, uint off, uint n)
     
     bp = bread(ip->dev, sector_number);
     adler = adler32(bp->data, 512);
-//if(sector_number != 29) {
+
     if (blockNum < NDIRECT)
     {
 	if (adler != ip->checksums[blockNum])
@@ -456,7 +456,7 @@ readi(struct inode *ip, char *dst, uint off, uint n)
 	}
 	brelse(bp2);
     }
-//}
+
     m = min(n - tot, BSIZE - off%BSIZE);
     memmove(dst, bp->data + off%BSIZE, m);
     brelse(bp);
@@ -508,16 +508,16 @@ writei(struct inode *ip, char *src, uint off, uint n)
         brelse(bp2);
     }
 
-	    //iupdate(ip);
+	    iupdate(ip);
     bwrite(bp);
     brelse(bp);
   }
 
-  iupdate(ip);
 
   if(n > 0 && off > ip->size){
     ip->size = off;
   }
+  iupdate(ip);
   return n;
 }
 
