@@ -401,6 +401,28 @@ stati(struct inode *ip, struct stat *st)
   st->type = ip->type;
   st->nlink = ip->nlink;
   st->size = ip->size;
+  
+  uint checksum, blockNum, off, temp;
+  checksum = temp = 0;
+
+  for(off = 0; off < ip->size; off += BSIZE)
+  {
+    blockNum = off/BSIZE;
+    if(blockNum < NDIRECT)
+    {
+	checksum ^= ip->checksums[blockNum];
+    }    
+    else 
+    {
+	struct buf *bp;
+	bp = bread(ip->dev, ip->indirect);
+	memmove(&temp, &bp->data[sizeof(uint) * (NINDIRECT + blockNum - NDIRECT)], sizeof(uint));
+	checksum ^= temp;
+	brelse(bp);
+    }
+  }
+
+  st->checksum = checksum;
 }
 
 // Read data from inode.
@@ -508,7 +530,7 @@ writei(struct inode *ip, char *src, uint off, uint n)
         brelse(bp2);
     }
 
-	    iupdate(ip);
+//	    iupdate(ip);
     bwrite(bp);
     brelse(bp);
   }
